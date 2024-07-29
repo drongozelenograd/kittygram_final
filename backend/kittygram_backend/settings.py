@@ -1,14 +1,17 @@
 # flake8: noqa
 import os
 from pathlib import Path
+from environs import Env
+
+env = Env()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('SECRET_KEY', 'dummy_key')
+SECRET_KEY = env('SECRET_KEY', 'dummy_key')
 
-DEBUG = False
+DEBUG = env.bool('DEBUG', False)
 
-ALLOWED_HOSTS = ['158.160.92.121', '127.0.0.1', 'localhost', 'kittygram-dz.hopto.org']
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', ['127.0.0.1', 'localhost'])
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -57,11 +60,11 @@ WSGI_APPLICATION = 'kittygram_backend.wsgi.application'
 DATABASES = {
     'default': {        
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_DB', 'django'),
-        'USER': os.getenv('POSTGRES_USER', 'django'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
-        'HOST': os.getenv('DB_HOST', ''),
-        'PORT': os.getenv('DB_PORT', 5432)
+        'NAME': env('POSTGRES_DB', 'django'),
+        'USER': env('POSTGRES_USER', 'django'),
+        'PASSWORD': env('POSTGRES_PASSWORD', ''),
+        'HOST': env('DB_HOST', ''),
+        'PORT': env('DB_PORT', 5432)
     }
 }
 
