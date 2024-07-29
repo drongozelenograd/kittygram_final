@@ -200,6 +200,11 @@ jobs:
       with:
         python-version: 3.9
         cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip        
+        pip install -r ./requirements/requirements.txt
 
     - name: Main Test    
       run: pytest
