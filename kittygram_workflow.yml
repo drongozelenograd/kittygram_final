@@ -10,8 +10,21 @@ jobs:
   tests:
     name: PEP8 and main tests
     runs-on: ubuntu-latest
-    # Блок services с базой данных не нужен для этого проекта,
-    # так как тесты подключаются к продакшен-серверу
+    services:
+      postgres:
+        image: postgres:13.10
+        # Указываем имя тестовой базы, имя и пароль пользователя в открытом виде,
+        # ведь эта база будет работать только во время прогона тестов
+        env:
+          POSTGRES_USER: django_user
+          POSTGRES_PASSWORD: django_password
+          POSTGRES_DB: django_db
+        ports:
+          - 5432:5432
+        # Эта конструкция описывает проверку готовности сервиса postgres
+        # Если её не будет, то тесты могут запуститься раньше, чем сервер PostgreSQL
+        # В результате тесты опять решат, что базы нет, — и упадут
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python
@@ -28,8 +41,18 @@ jobs:
     - name: Test PEP8      
       run: python -m flake8 backend/        
 
-    - name: Main Test    
-      run: pytest
+    - name: Simple Test
+      env:
+        POSTGRES_USER: django_user
+        POSTGRES_PASSWORD: django_password
+        POSTGRES_DB: django_db
+        # Сервер БД запущен в Docker, но его порт проброшен на хост
+        # Поэтому подключаемся к 127.0.0.1:5432
+        DB_HOST: 127.0.0.1
+        DB_PORT: 5432
+      run: |
+        cd backend/
+        python manage.py test
   
   # Push backend Docker image to DockerHub
   build_backend_and_push_to_docker_hub:
@@ -180,11 +203,31 @@ jobs:
           sudo docker compose -f docker-compose.production.yml exec backend python manage.py collectstatic
           sudo docker compose -f docker-compose.production.yml exec backend cp -r /app/collected_static/. /backend_static/static/          
   
+  # Integration tests
+  integration_tests:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip        
+        pip install -r ./backend/requirements.txt        
+
+    - name: Main Test    
+      run: pytest
+  
   # Send message to Telegram 
   send_message:
     name: Send message to Telegram
     runs-on: ubuntu-latest
-    needs: deploy
+    needs: integration_tests
     steps:
     - name: Send message
       uses: appleboy/telegram-action@master
